@@ -2,78 +2,73 @@
 
 ## Why this project structure
 
-The suite is a single Maven test module. Reviewers run `mvn clean test`; there is no extra “framework JAR” to publish.
+One Maven test module. Reviewers run `mvn clean test`; there is no separate “framework JAR”.
 
-Layers are split the way a mobile team would keep them after the task:
+Layers match how a mobile team would keep this after the assignment:
 
-- `com/tui/automation/features/` — the five release checks, in business language (classpath package for JUnit Platform discovery)
+- `features/` — five release checks in business language
 - `steps/` — glue only; no locators
 - `pages/` — one class per screen/dialog (POM)
-- `driver/` — session + server + device, so Android / iOS / cloud do not leak into steps
+- `driver/` — session, local Appium server, device; Android / iOS / cloud stay out of steps
 - `config/config.yaml` — environment
 - `testdata/*.json` — users and expected offers (single source of truth for anchors)
-- `runner/CucumberTest` — JUnit Platform `@Suite` + `cucumber-junit-platform-engine` (no JUnit 4 / Vintage)
-- `cucumber.properties` — glue, plugins, long naming strategy for Surefire
+- `runner/` — entry point so Maven discovers and runs the Cucumber suite
 
-Tags: `@login` (login feature), `@offers` (All / Hotels / Holidays cards), `@smoke` (happy login + All tab).  
-`mvn test -Dcucumber.filter.tags="@smoke"` for a short gate.
+Tags: `@login`, `@offers`, `@smoke` (happy login + All tab).  
+Short gate: `mvn test -Dcucumber.filter.tags="@smoke"`.
 
-Appium is a **project** `npm` dependency, not a global daemon. Hooks start `AppiumDriverLocalService` from `node_modules` so `mvn clean test` is enough after `npm install`.
+Appium is a **project** `npm` dependency, not a global daemon. Hooks start it from `node_modules`, so clone → `npm install` → `mvn clean test` is enough.
 
-Surefire uses `includeJUnit5Engines=junit-platform-suite` so features are not discovered twice (Suite + raw Cucumber engine). Maven reports `Tests run: 5`.
-
-iOS is a first-class branch in `DriverManager` (XCUITest options, bundle id, `.ipa` path). It fails with a clear message because TUI only sent an Android APK. That is intentional: the structure is ready; I did not invent an iOS app.
+iOS is wired in `DriverManager` (XCUITest caps, bundle id, `.ipa` path) and fails with a clear message because only an Android APK was provided. Structure is ready; I did not invent an iOS app.
 
 ## Which parts used AI tools, and where I corrected the output
 
 AI (Cursor) was used to:
 
-- inspect the APK (Compose screens, test tags, JSON assets, login ViewModel)
-- scaffold Maven / Cucumber / page objects
+- explore the APK (screens, test tags, bundled JSON)
+- scaffold the Maven / Cucumber / POM layout
 - draft README and this file
 
-I corrected or overrode the AI output on:
+I steered or overrode the output where it would have been wrong for *this* app:
 
-- **Login “credentials”.** First instinct was to hunt for a hardcoded user. The ViewModel only checks non-empty fields — any username/password work. There is no secret account.
-- **Date of birth.** The login field is `readOnly`; the date must come from the Material calendar. Typing into the closed field does nothing useful. In the dialog, **text-input mode** accepts `MM/DD/YYYY` as digits only (`10211990` → mask `10/21/1990`); slashes break IME input. Confirm must be tapped **after** the keyboard is dismissed, or the tap hits the IME.
-- **Locators.** Prefer `testTag` resource ids (`username_input_field`, `top_app_bar_hotels_tab`, `content_card_hotel_name_{index}`). Card search walks indexed ids, not XPath `contains(@resource-id,…)`. Tab selection reads the `selected` attribute on `top_app_bar_{tab}_tab`.
-- **Test data.** Hotel / holiday / board expectations live in `offers.json`; Gherkin says “first hotel / first holiday / expected board”, steps read `TestData`. Filter asserts use the opposite anchor (`no holiday` / `no hotel`).
-- **Appium process.** A generated README that said “start Appium in another terminal” would break the 10–15 minute clone-and-run bar. The suite starts the server itself.
-- **Runner stack.** An early scaffold mixed Cucumber-JUnit4 + Vintage + Jupiter asserts (Surefire `Tests run: 0`). Migrated to JUnit Platform Suite + Cucumber engine so Maven counts match the five scenarios.
-- **Scenario count.** AI drafts tend to add search, filters, and booking. Price/book is a no-op in this APK. I kept five checks that actually exist.
+- **DOB automation.** Drafts tried typing into the login DOB field (it is `readOnly`) or sending `10/21/1990` with slashes. Working flow: open the calendar, enter digits only (`10211990`), dismiss the keyboard, then Confirm — otherwise the tap hits the IME.
+- **One strong negative login case.** Missing DOB (with username/password filled) proves the calendar gate — not three empty-field clones of the same `Required` check.
+- **Stable locators + tab state.** Compose `testTag` ids; no fragile XPath. Also assert the tab’s `selected` attribute — cards visible after a click do not prove the right filter is active.
+- **Offers in JSON, not Gherkin.** Hotel/holiday/board anchors come from `offers.json`; filter scenarios also assert the other product type is absent.
+- **Clone-and-run wiring.** Appium starts from `node_modules` (not a second terminal). Maven entry point fixed after `Tests run: 0`.
+- **`@smoke` as a short gate.** Happy login + All tab for a fast check; do not treat all five scenarios as the default micro-PR run. Full set stays `@login` / `@offers`.
+- **Idempotent UiAutomator2 install in CI.** Blind `appium driver install` failed when `npm ci` had already provided the driver — install only if missing.
+- **Only what the APK can do.** No search box, real booking, or iOS without an `.ipa`. Price/book UI is a no-op here.
 
-## What I would add given more time (describe only)
+## What I would add given more time
 
-- Scroll + assert more than the first viewport of bundled results
-- Accessibility snapshot for Compose nodes that have no test tag
-- Allure or Masterthought trend reports next to the Cucumber HTML
-- Contract tests on APK `holiday-results.json` / `hotel-results.json` vs `offers.json`
-- iOS GitHub Actions job once an `.ipa` exists (macOS runner + simctl), reusing the same Gherkin
+- Scroll + assert beyond the first viewport of bundled results
+- Light accessibility checks for Compose nodes that have no test tag
+- Contract checks: APK `holiday-results.json` / `hotel-results.json` vs `offers.json`
+- iOS GitHub Actions job once an `.ipa` exists (macOS runner + simctl), same Gherkin
 - Cloud matrix (`-Dexecution=cloud`) with BrowserStack/Sauce secrets
 
 ## How I would run this in CI with parallel iOS and Android
 
-**Android is wired:** [`.github/workflows/android-ci.yml`](.github/workflows/android-ci.yml) runs `npm ci` + JDK 21 + API 34 AOSP x86_64 emulator (`reactivecircus/android-emulator-runner`) + a UiAutomator preflight for `login_form_screen_root` + `mvn clean test`. Sessions set Compose-friendly `waitForIdleTimeout=0`; failures attach page source as well as screenshots.
+**Android is wired:** [`.github/workflows/android-ci.yml`](.github/workflows/android-ci.yml) runs JDK 21 + npm + an API 34 emulator, a short UiAutomator preflight that the login screen is visible, then `mvn clean test`. Failures upload screenshots and page source.
 
-Keep one command across platforms; diverge only on capabilities / runner OS:
+Same command across platforms; only capabilities and runner OS change:
 
 ```text
 mvn clean test -Dplatform=${{ matrix.platform }} -Dexecution=local
 ```
 
-Intended full matrix (iOS still blocked on missing `.ipa`):
+Intended matrix (iOS blocked on missing `.ipa`):
 
 1. **Matrix:** `{ platform: android }` (done) and `{ platform: ios }` (future).
-2. **Android job:** as in `android-ci.yml` above.
-3. **iOS job:** macOS runner, simctl boot, install `.ipa`/`.app`, `mvn clean test -Dplatform=ios`.
-4. **Cloud option:** same matrix but `-Dexecution=cloud` and vendor secrets. Parallelism is then N Android × M iOS devices on the farm.
-5. **Isolation:** `DriverManager` is `ThreadLocal`. Do **not** share one Appium session across platforms; parallelise at the **pipeline job** level first.
-
-I would not mix Android and iOS in one JVM process: different Appium drivers and different device farms.
+2. **Android job:** as in `android-ci.yml`.
+3. **iOS job:** macOS runner, simctl, install `.ipa`/`.app`, `mvn clean test -Dplatform=ios`.
+4. **Cloud:** same matrix with `-Dexecution=cloud` and vendor secrets — parallelism is then N Android × M iOS devices on the farm.
+5. **Isolation:** one Appium driver session per job. Parallelise at **pipeline job** level first — do not share one session across Android and iOS.
 
 ## Why these five scenarios, not others
 
-The app has two real surfaces: a login form and a tabbed results list fed by local JSON. There is no search box, no payment, no account API.
+The app has two real surfaces: a login form and a tabbed results list fed by local JSON. No search box, no payment, no account API.
 
 | Scenario | Release risk it covers |
 | --- | --- |
@@ -89,6 +84,5 @@ I dropped:
 - Extra login permutations beyond the DOB-missing case
 - Booking/price tap (button handler is empty)
 - Image loading (network/CDN, not a release gate for this APK)
-- Pagination (same card widget, more rows)
 
-Five checks, each a different failure mode: targeted validation, entry + DOB binding, mixed list + tab state, hotel filter, holiday filter + commercial CTA.
+Five checks, five different failure modes: targeted validation, entry + DOB binding, mixed list + tab state, hotel filter, holiday filter + commercial CTA.
