@@ -35,7 +35,11 @@ jobs:
       - name: Install Appium (npm)
         run: |
           npm ci
-          npx appium driver install uiautomator2
+          npx appium driver list --installed
+          # Driver often already comes from package.json; install only if missing.
+          if ! npx appium driver list --installed --json 2>/dev/null | grep -q '"uiautomator2"'; then
+            npx appium driver install uiautomator2
+          fi
           npx appium driver list --installed
 
       - name: Enable KVM

@@ -9,8 +9,11 @@ ls -la apps/
 ls -la src/test/resources/com/tui/automation/features/
 npx appium -v
 
-echo "==> Ensure UiAutomator2 driver is installed for this runner"
-npx appium driver install uiautomator2
+echo "==> Ensure UiAutomator2 driver is available"
+npx appium driver list --installed
+if ! npx appium driver list --installed --json 2>/dev/null | grep -q '"uiautomator2"'; then
+  npx appium driver install uiautomator2
+fi
 npx appium driver list --installed
 
 echo "==> Run Maven suite"
