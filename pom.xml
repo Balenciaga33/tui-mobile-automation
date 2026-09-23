@@ -18,7 +18,7 @@
         <appium.version>10.0.0</appium.version>
         <jackson.version>2.18.3</jackson.version>
         <!-- Default: everything except @ignore. Override: -Dcucumber.filter.tags="@smoke" -->
-        <cucumber.filter.tags>~@ignore</cucumber.filter.tags>
+        <cucumber.filter.tags>not @ignore</cucumber.filter.tags>
     </properties>
 
     <dependencyManagement>

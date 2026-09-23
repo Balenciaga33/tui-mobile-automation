@@ -33,7 +33,10 @@ jobs:
           cache: npm
 
       - name: Install Appium (npm)
-        run: npm ci
+        run: |
+          npm ci
+          npx appium driver install uiautomator2
+          npx appium driver list --installed
 
       - name: Enable KVM
         run: |
@@ -61,4 +64,5 @@ jobs:
             target/cucumber-report.html
             target/cucumber.json
             target/screenshots/
+            target-mvn-test.log
           if-no-files-found: warn

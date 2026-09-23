@@ -1,19 +1,49 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-mvn -B clean test -Dplatform=android -Dexecution=local
+echo "==> Environment"
+java -version
+mvn -version
+adb devices
+ls -la apps/
+ls -la src/test/resources/com/tui/automation/features/
+npx appium -v
 
-if [[ ! -f target/cucumber.json ]]; then
-  echo "Missing target/cucumber.json — Cucumber did not produce a report" >&2
-  exit 1
-fi
+echo "==> Ensure UiAutomator2 driver is installed for this runner"
+npx appium driver install uiautomator2
+npx appium driver list --installed
 
-python3 - <<'PY'
+echo "==> Run Maven suite"
+mvn -B clean test -Dplatform=android -Dexecution=local | tee target-mvn-test.log
+MVN_EXIT=${PIPESTATUS[0]}
+
+echo "==> Maven finished with exit code ${MVN_EXIT}"
+if [[ -f target/cucumber.json ]]; then
+  python3 - <<'PY'
 import json
 import sys
 
 features = json.load(open("target/cucumber.json"))
-scenarios = sum(len(f.get("elements", [])) for f in features)
-print(f"Cucumber scenarios executed: {scenarios}")
-sys.exit(0 if scenarios > 0 else 1)
+elements = [e for f in features for e in f.get("elements", [])]
+scenarios = [e for e in elements if e.get("type") in (None, "scenario", "scenario_outline")]
+# Cucumber JVM may omit type; count non-background elements
+scenarios = [e for e in elements if e.get("type") != "background"]
+passed = failed = skipped = 0
+for sc in scenarios:
+    statuses = [x.get("result", {}).get("status") for x in sc.get("steps", []) if x.get("result")]
+    if any(s == "failed" for s in statuses):
+        failed += 1
+    elif any(s == "skipped" for s in statuses) and not any(s == "passed" for s in statuses):
+        skipped += 1
+    else:
+        passed += 1
+print(f"Cucumber scenarios: total={len(scenarios)} passed={passed} failed={failed} skipped={skipped}")
+if len(scenarios) == 0:
+    sys.exit(2)
 PY
+else
+  echo "Missing target/cucumber.json" >&2
+  MVN_EXIT=1
+fi
+
+exit "${MVN_EXIT}"
