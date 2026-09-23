@@ -32,6 +32,9 @@ jobs:
           node-version: "20"
           cache: npm
 
+      # Tooling is split into its own steps. SDK + system image + emulator boot
+      # cannot be a separate GHA step from the tests: the emulator process must
+      # stay alive for Appium, so android-emulator-runner owns download→boot→script.
       - name: Install Appium (npm)
         run: |
           npm ci
@@ -48,7 +51,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run tests on Android emulator
+      - name: Emulator (download SDK/image → boot → Cucumber)
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
