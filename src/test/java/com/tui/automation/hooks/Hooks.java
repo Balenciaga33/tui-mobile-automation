@@ -30,11 +30,19 @@ public class Hooks {
     public void stopSession(Scenario scenario) {
         try {
             if (scenario.isFailed()) {
-                byte[] screenshot = DriverManager.getDriver().getScreenshotAs(OutputType.BYTES);
+                var driver = DriverManager.getDriver();
+                byte[] screenshot = driver.getScreenshotAs(OutputType.BYTES);
                 scenario.attach(screenshot, "image/png", scenario.getName());
                 Path dir = Path.of("target", "screenshots");
                 Files.createDirectories(dir);
-                Files.write(dir.resolve(safeName(scenario.getName()) + ".png"), screenshot);
+                String base = safeName(scenario.getName());
+                Files.write(dir.resolve(base + ".png"), screenshot);
+                try {
+                    Files.writeString(dir.resolve(base + ".page-source.xml"), driver.getPageSource());
+                    scenario.attach(driver.getPageSource(), "text/xml", "page-source");
+                } catch (Exception ignored) {
+                    // screenshot alone is still useful
+                }
             }
         } catch (Exception ignored) {
             // keep the original test failure

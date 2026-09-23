@@ -38,7 +38,11 @@ public final class AppiumServerManager {
         if (Files.exists(appiumJs)) {
             builder.withAppiumJS(appiumJs.toFile());
         }
-        String node = firstExisting("/usr/local/bin/node", "/opt/homebrew/bin/node");
+        String node = firstExisting(
+                System.getenv("NODE_BINARY"),
+                which("node"),
+                "/usr/local/bin/node",
+                "/opt/homebrew/bin/node");
         if (node != null) {
             builder.usingDriverExecutable(new File(node));
         }
@@ -73,10 +77,23 @@ public final class AppiumServerManager {
 
     private static String firstExisting(String... paths) {
         for (String path : paths) {
-            if (Files.isExecutable(Path.of(path))) {
+            if (path != null && !path.isBlank() && Files.isExecutable(Path.of(path))) {
                 return path;
             }
         }
         return null;
+    }
+
+    private static String which(String binary) {
+        try {
+            Process process = new ProcessBuilder("bash", "-lc", "command -v " + binary)
+                    .redirectErrorStream(true)
+                    .start();
+            String out = new String(process.getInputStream().readAllBytes()).trim();
+            process.waitFor(10, java.util.concurrent.TimeUnit.SECONDS);
+            return out.isBlank() ? null : out;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

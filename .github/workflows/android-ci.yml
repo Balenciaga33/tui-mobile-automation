@@ -53,10 +53,12 @@ jobs:
         with:
           api-level: 34
           arch: x86_64
-          target: google_apis
+          # AOSP image: fewer GMS first-run overlays than google_apis on cold CI boots.
+          target: default
           profile: pixel_6
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot
           disable-animations: true
+          emulator-boot-timeout: 600
           script: bash scripts/ci-android-tests.sh
 
       - name: Upload Cucumber report
@@ -69,4 +71,5 @@ jobs:
             target/cucumber.json
             target/screenshots/
             target-mvn-test.log
+            target-preflight-ui.xml
           if-no-files-found: warn

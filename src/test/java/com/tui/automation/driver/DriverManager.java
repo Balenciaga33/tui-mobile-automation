@@ -31,12 +31,32 @@ public final class DriverManager {
     public static void start() {
         FrameworkConfig config = FrameworkConfig.get();
         AppiumDriver driver = switch (config.platform()) {
-            case "android" -> new AndroidDriver(serverUrl(config), androidOptions(config));
+            case "android" -> {
+                AndroidDriver android = new AndroidDriver(serverUrl(config), androidOptions(config));
+                // Compose keeps the a11y tree "busy" on slow CI GPUs; idle waits then miss testTags.
+                android.setSetting("waitForIdleTimeout", 0);
+                android.setSetting("waitForSelectorTimeout", 0);
+                android.setSetting("disableIdLocatorAutocompletion", true);
+                ensureAndroidAppForeground(android, config);
+                yield android;
+            }
             case "ios" -> new IOSDriver(serverUrl(config), iosOptions(config));
             default -> throw new IllegalArgumentException("Unsupported platform: " + config.platform());
         };
         driver.manage().timeouts().implicitlyWait(Duration.ZERO);
         DRIVER.set(driver);
+    }
+
+    private static void ensureAndroidAppForeground(AndroidDriver android, FrameworkConfig config) {
+        String pkg = config.androidAppPackage();
+        try {
+            String current = android.getCurrentPackage();
+            if (current == null || !pkg.equals(current)) {
+                android.activateApp(pkg);
+            }
+        } catch (Exception e) {
+            android.activateApp(pkg);
+        }
     }
 
     public static void stop() {
@@ -74,6 +94,8 @@ public final class DriverManager {
                 .setAutomationName("UiAutomator2")
                 .setAppPackage(config.androidAppPackage())
                 .setAppActivity(config.androidAppActivity())
+                .setAppWaitActivity(config.androidAppActivity())
+                .setAppWaitDuration(Duration.ofSeconds(60))
                 .setNoReset(false)
                 .setAutoGrantPermissions(true)
                 .setNewCommandTimeout(Duration.ofSeconds(120));
@@ -88,6 +110,8 @@ public final class DriverManager {
         }
         options.setCapability("appium:enforceAppInstall", true);
         options.setCapability("appium:disableIdLocatorAutocompletion", true);
+        options.setCapability("appium:ignoreHiddenApiPolicyError", true);
+        options.setCapability("appium:adbExecTimeout", 60_000);
         return options;
     }
 

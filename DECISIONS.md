@@ -53,7 +53,7 @@ I corrected or overrode the AI output on:
 
 ## How I would run this in CI with parallel iOS and Android
 
-**Android is wired:** [`.github/workflows/android-ci.yml`](.github/workflows/android-ci.yml) runs `npm ci` + JDK 21 + API 34 emulator (`reactivecircus/android-emulator-runner`) + `mvn clean test`, then uploads the Cucumber HTML/JSON and failure screenshots.
+**Android is wired:** [`.github/workflows/android-ci.yml`](.github/workflows/android-ci.yml) runs `npm ci` + JDK 21 + API 34 AOSP x86_64 emulator (`reactivecircus/android-emulator-runner`) + a UiAutomator preflight for `login_form_screen_root` + `mvn clean test`. Sessions set Compose-friendly `waitForIdleTimeout=0`; failures attach page source as well as screenshots.
 
 Keep one command across platforms; diverge only on capabilities / runner OS:
 
