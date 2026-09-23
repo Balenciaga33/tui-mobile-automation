@@ -1,0 +1,28 @@
+# Overrides: -Dplatform=android|ios  -Dexecution=local|real|cloud
+platform: android
+execution: local
+timeoutSeconds: 25
+
+appium:
+  host: 127.0.0.1
+  port: 4723
+  startLocalServer: true
+
+android:
+  avd: tui_pixel_34
+  app: apps/TUIChallengeApp.apk
+  appPackage: com.tui.qa.challenge
+  appActivity: com.tui.qa.challenge.MainActivity
+  automationName: UiAutomator2
+
+ios:
+  # No .ipa was provided. Structure is ready; execution throws a clear error.
+  app: apps/TUIChallengeApp.ipa
+  bundleId: com.tui.qa.challenge
+  automationName: XCUITest
+  deviceName: iPhone 16
+
+cloud:
+  # Set BROWSERSTACK_USERNAME / BROWSERSTACK_ACCESS_KEY, or CLOUD_URL.
+  provider: browserstack
+  serverUrl: ""

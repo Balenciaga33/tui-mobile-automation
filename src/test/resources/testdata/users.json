@@ -1,0 +1,8 @@
+{
+  "validUser": {
+    "username": "qa.user",
+    "password": "any-password",
+    "dateOfBirth": "1990-10-21",
+    "note": "Date of birth is typed into the calendar text field as MM/DD/YYYY digits (10211990 → 10/21/1990)."
+  }
+}

@@ -1,0 +1,16 @@
+target/
+target/screenshots/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+node_modules/
+reports/
+*.log
+.claude/
+.env
+.env.local
+*.app
+*.ipa
+# Keep the challenge APK in git so reviewers can clone-and-run
+!apps/TUIChallengeApp.apk
