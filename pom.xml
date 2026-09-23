@@ -97,6 +97,8 @@
                     <includes>
                         <include>**/CucumberTest.java</include>
                     </includes>
+                    <!-- Fail CI when discovery finds nothing (empty green builds). -->
+                    <failIfNoTests>true</failIfNoTests>
                     <!-- Suite owns discovery; without this the Cucumber engine also runs features alone. -->
                     <includeJUnit5Engines>junit-platform-suite</includeJUnit5Engines>
                     <systemPropertyVariables>

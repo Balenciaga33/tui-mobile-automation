@@ -50,7 +50,17 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: mvn -B clean test -Dplatform=android -Dexecution=local
+          script: |
+            set -euo pipefail
+            mvn -B clean test -Dplatform=android -Dexecution=local
+            test -f target/cucumber.json
+            python3 - <<'PY'
+            import json, sys
+            features = json.load(open("target/cucumber.json"))
+            scenarios = sum(len(f.get("elements", [])) for f in features)
+            print(f"Cucumber scenarios executed: {scenarios}")
+            sys.exit(0 if scenarios > 0 else 1)
+            PY
 
       - name: Upload Cucumber report
         if: always()
