@@ -6,7 +6,7 @@ Appium + Java + Cucumber BDD + Maven for `TUIChallengeApp.apk`.
 
 Five scenarios on the release-critical path: login validation, successful login, and All / Hotels / Holidays results the app actually ships.
 
-## What you need
+## Prerequisites
 
 | Tool | Version used here |
 | --- | --- |
